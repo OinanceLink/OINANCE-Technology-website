@@ -1,17 +1,37 @@
-/* =========================
+/* =====================================================
    OINANCE ADMIN DASHBOARD
-========================= */
-
-const STORAGE_KEY = "oinanceNews";
-
-let articles = JSON.parse(
-  localStorage.getItem(STORAGE_KEY)
-) || [];
+   SUPABASE NEWS + IMAGE/VIDEO UPLOAD
+===================================================== */
 
 
-/* =========================
+/* =====================================================
+   SUPABASE CONNECTION
+===================================================== */
+
+const SUPABASE_URL = https://ieqgrgklofmesatrycwq.supabase.co;
+
+const SUPABASE_PUBLISHABLE_KEY = sb_publishable_vGQOCmoq7a8FgIHY6yIofg_uIl4P4yJ;
+
+
+const supabaseClient =
+  window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
+
+
+/* =====================================================
+   SETTINGS
+===================================================== */
+
+const NEWS_TABLE = "news";
+
+const IMAGE_BUCKET = "news-images";
+
+
+/* =====================================================
    ELEMENTS
-========================= */
+===================================================== */
 
 const sidebarLinks =
   document.querySelectorAll(".sidebar-link");
@@ -37,10 +57,16 @@ const cancelEditor =
 const adminNewsForm =
   document.getElementById("adminNewsForm");
 
+const imageMediaButton =
+  document.getElementById("imageMediaButton");
 
-/* =========================
+const videoMediaButton =
+  document.getElementById("videoMediaButton");
+
+
+/* =====================================================
    NAVIGATION
-========================= */
+===================================================== */
 
 function showPage(pageName) {
 
@@ -52,7 +78,9 @@ function showPage(pageName) {
 
 
   const selectedPage =
-    document.getElementById(pageName + "Page");
+    document.getElementById(
+      pageName + "Page"
+    );
 
 
   if (selectedPage) {
@@ -65,6 +93,7 @@ function showPage(pageName) {
   sidebarLinks.forEach(function(link) {
 
     link.classList.remove("active");
+
 
     if (link.dataset.page === pageName) {
 
@@ -79,39 +108,54 @@ function showPage(pageName) {
 
 sidebarLinks.forEach(function(link) {
 
-  link.addEventListener("click", function() {
+  link.addEventListener(
+    "click",
+    function() {
 
-    showPage(link.dataset.page);
+      showPage(link.dataset.page);
 
-  });
+    }
+  );
 
 });
 
 
 pageLinks.forEach(function(link) {
 
-  link.addEventListener("click", function() {
+  link.addEventListener(
+    "click",
+    function() {
 
-    showPage(link.dataset.pageLink);
+      showPage(link.dataset.pageLink);
 
-  });
+    }
+  );
 
 });
 
 
-/* =========================
-   OPEN NEWS EDITOR
-========================= */
+/* =====================================================
+   OPEN EDITOR
+===================================================== */
 
 function openEditor() {
 
   showPage("news");
 
-  newsEditor.classList.add("show");
+
+  if (newsEditor) {
+
+    newsEditor.classList.add("show");
+
+  }
+
 
   window.scrollTo({
+
     top: 0,
+
     behavior: "smooth"
+
   });
 
 }
@@ -137,9 +181,9 @@ if (newStoryButton) {
 }
 
 
-/* =========================
+/* =====================================================
    CLOSE EDITOR
-========================= */
+===================================================== */
 
 if (cancelEditor) {
 
@@ -147,10 +191,29 @@ if (cancelEditor) {
     "click",
     function() {
 
-      newsEditor.classList.remove("show");
+      if (newsEditor) {
+
+        newsEditor.classList.remove("show");
+
+      }
+
 
       if (adminNewsForm) {
+
         adminNewsForm.reset();
+
+      }
+
+
+      const author =
+        document.getElementById("adminAuthor");
+
+
+      if (author) {
+
+        author.value =
+          "OINANCE Editorial";
+
       }
 
     }
@@ -159,52 +222,151 @@ if (cancelEditor) {
 }
 
 
-/* =========================
+/* =====================================================
+   UPLOAD FILE TO SUPABASE STORAGE
+===================================================== */
+
+async function uploadFile(
+  file,
+  folder
+) {
+
+  if (!file) {
+
+    return null;
+
+  }
+
+
+  const fileExtension =
+    file.name.includes(".")
+      ? file.name
+          .split(".")
+          .pop()
+          .toLowerCase()
+      : "file";
+
+
+  const safeName =
+    file.name
+      .replace(
+        /[^a-zA-Z0-9._-]/g,
+        "-"
+      );
+
+
+  const uniqueName =
+    Date.now()
+    + "-"
+    + Math.random()
+        .toString(36)
+        .substring(2, 9)
+    + "-"
+    + safeName;
+
+
+  const filePath =
+    folder + "/" + uniqueName;
+
+
+  const { error } =
+    await supabaseClient
+      .storage
+      .from(IMAGE_BUCKET)
+      .upload(
+        filePath,
+        file,
+        {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type
+        }
+      );
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  const { data } =
+    supabaseClient
+      .storage
+      .from(IMAGE_BUCKET)
+      .getPublicUrl(filePath);
+
+
+  return data.publicUrl;
+
+}
+
+
+/* =====================================================
    PUBLISH NEWS
-========================= */
+===================================================== */
 
 if (adminNewsForm) {
 
   adminNewsForm.addEventListener(
     "submit",
-    function(event) {
+    async function(event) {
 
       event.preventDefault();
 
 
       const title =
-        document.getElementById("adminTitle")
-        .value
-        .trim();
+        document
+          .getElementById("adminTitle")
+          .value
+          .trim();
 
 
       const category =
-        document.getElementById("adminCategory")
-        .value;
+        document
+          .getElementById("adminCategory")
+          .value;
 
 
       const author =
-        document.getElementById("adminAuthor")
-        .value
-        .trim();
+        document
+          .getElementById("adminAuthor")
+          .value
+          .trim();
 
 
       const story =
-        document.getElementById("adminStory")
-        .value
-        .trim();
+        document
+          .getElementById("adminStory")
+          .value
+          .trim();
 
 
-      const image =
-        document.getElementById("adminImage")
-        .value
-        .trim();
+      const imageInput =
+        document.getElementById(
+          "adminImage"
+        );
 
 
-      const video =
-        document.getElementById("adminVideo")
-        .value
-        .trim();
+      const videoInput =
+        document.getElementById(
+          "adminVideo"
+        );
+
+
+      const imageFile =
+        imageInput &&
+        imageInput.files
+          ? imageInput.files[0]
+          : null;
+
+
+      const videoFile =
+        videoInput &&
+        videoInput.files
+          ? videoInput.files[0]
+          : null;
 
 
       if (!title || !story) {
@@ -218,52 +380,181 @@ if (adminNewsForm) {
       }
 
 
-      const newArticle = {
+      try {
 
-        id: Date.now(),
-
-        title: title,
-
-        category: category,
-
-        author:
-          author || "OINANCE Editorial",
-
-        story: story,
-
-        image: image,
-
-        video: video,
-
-        date:
-          new Date().toLocaleDateString()
-
-      };
+        showMessage(
+          "Publishing your OINANCE story..."
+        );
 
 
-      articles.unshift(newArticle);
+        /* =========================
+           UPLOAD IMAGE
+        ========================== */
+
+        let imageUrl = null;
 
 
-      saveArticles();
+        if (imageFile) {
+
+          if (
+            !imageFile.type.startsWith(
+              "image/"
+            )
+          ) {
+
+            throw new Error(
+              "Please choose a valid image."
+            );
+
+          }
 
 
-      adminNewsForm.reset();
+          imageUrl =
+            await uploadFile(
+              imageFile,
+              "images"
+            );
+
+        }
 
 
-      document.getElementById(
-        "adminAuthor"
-      ).value = "OINANCE Editorial";
+        /* =========================
+           UPLOAD VIDEO
+        ========================== */
+
+        let videoUrl = null;
 
 
-      newsEditor.classList.remove("show");
+        if (videoFile) {
+
+          if (
+            !videoFile.type.startsWith(
+              "video/"
+            )
+          ) {
+
+            throw new Error(
+              "Please choose a valid video."
+            );
+
+          }
 
 
-      showMessage(
-        "✓ Story published successfully."
-      );
+          /*
+             The current bucket is news-images.
+             Videos are stored there temporarily
+             in a separate folder.
+
+             We can create a dedicated videos
+             bucket later.
+          */
+
+          videoUrl =
+            await uploadFile(
+              videoFile,
+              "videos"
+            );
+
+        }
 
 
-      renderEverything();
+        /* =========================
+           SAVE NEWS ARTICLE
+        ========================== */
+
+        const { data, error } =
+          await supabaseClient
+            .from(NEWS_TABLE)
+            .insert({
+
+              title: title,
+
+              category: category,
+
+              author:
+                author ||
+                "OINANCE Editorial",
+
+              story: story,
+
+              image_url: imageUrl,
+
+              video_url: videoUrl,
+
+              published: true
+
+            })
+            .select();
+
+
+        if (error) {
+
+          throw error;
+
+        }
+
+
+        console.log(
+          "Published article:",
+          data
+        );
+
+
+        /* =========================
+           SUCCESS
+        ========================== */
+
+        showMessage(
+          "✓ OINANCE News published successfully."
+        );
+
+
+        adminNewsForm.reset();
+
+
+        const authorField =
+          document.getElementById(
+            "adminAuthor"
+          );
+
+
+        if (authorField) {
+
+          authorField.value =
+            "OINANCE Editorial";
+
+        }
+
+
+        if (newsEditor) {
+
+          newsEditor.classList.remove(
+            "show"
+          );
+
+        }
+
+
+        await loadArticles();
+
+
+      } catch (error) {
+
+        console.error(
+          "OINANCE publishing error:",
+          error
+        );
+
+
+        showMessage(
+          "Error: "
+          + (
+            error.message ||
+            "The story could not be published."
+          )
+        );
+
+      }
 
     }
   );
@@ -271,63 +562,94 @@ if (adminNewsForm) {
 }
 
 
-/* =========================
-   SAVE
-========================= */
+/* =====================================================
+   LOAD ARTICLES FROM SUPABASE
+===================================================== */
 
-function saveArticles() {
+async function loadArticles() {
 
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(articles)
-  );
+  try {
 
-}
-
-
-/* =========================
-   MESSAGE
-========================= */
-
-function showMessage(message) {
-
-  const element =
-    document.getElementById("adminMessage");
+    const { data, error } =
+      await supabaseClient
+        .from(NEWS_TABLE)
+        .select("*")
+        .order(
+          "created_at",
+          {
+            ascending: false
+          }
+        );
 
 
-  if (!element) {
-    return;
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    const articles =
+      data || [];
+
+
+    updateStatistics(
+      articles
+    );
+
+
+    renderAdminStories(
+      articles
+    );
+
+
+    renderRecentStories(
+      articles
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "Could not load OINANCE News:",
+      error
+    );
+
+
+    showMessage(
+      "News could not be loaded: "
+      + error.message
+    );
+
   }
 
-
-  element.textContent = message;
-
-
-  setTimeout(function() {
-
-    element.textContent = "";
-
-  }, 4000);
-
 }
 
 
-/* =========================
+/* =====================================================
    STATISTICS
-========================= */
+===================================================== */
 
-function updateStatistics() {
+function updateStatistics(
+  articles
+) {
 
   const totalNews =
-    document.getElementById("totalNews");
+    document.getElementById(
+      "totalNews"
+    );
 
 
   const technologyNews =
-    document.getElementById("technologyNews");
+    document.getElementById(
+      "technologyNews"
+    );
 
 
   const totalMedia =
-    document.getElementById("totalMedia");
+    document.getElementById(
+      "totalMedia"
+    );
 
 
   if (totalNews) {
@@ -341,11 +663,16 @@ function updateStatistics() {
   if (technologyNews) {
 
     technologyNews.textContent =
-      articles.filter(function(article) {
+      articles.filter(
+        function(article) {
 
-        return article.category === "technology";
+          return (
+            article.category ===
+            "technology"
+          );
 
-      }).length;
+        }
+      ).length;
 
   }
 
@@ -354,17 +681,26 @@ function updateStatistics() {
 
     let mediaCount = 0;
 
-    articles.forEach(function(article) {
 
-      if (article.image) {
-        mediaCount++;
+    articles.forEach(
+      function(article) {
+
+        if (article.image_url) {
+
+          mediaCount++;
+
+        }
+
+
+        if (article.video_url) {
+
+          mediaCount++;
+
+        }
+
       }
+    );
 
-      if (article.video) {
-        mediaCount++;
-      }
-
-    });
 
     totalMedia.textContent =
       mediaCount;
@@ -374,18 +710,24 @@ function updateStatistics() {
 }
 
 
-/* =========================
+/* =====================================================
    ADMIN STORY LIST
-========================= */
+===================================================== */
 
-function renderAdminStories() {
+function renderAdminStories(
+  articles
+) {
 
   const container =
-    document.getElementById("adminStories");
+    document.getElementById(
+      "adminStories"
+    );
 
 
   if (!container) {
+
     return;
+
   }
 
 
@@ -415,54 +757,78 @@ function renderAdminStories() {
   }
 
 
-  articles.forEach(function(article) {
+  articles.forEach(
+    function(article) {
 
-    const item =
-      document.createElement("div");
+      const item =
+        document.createElement(
+          "div"
+        );
 
 
-    item.className =
-      "admin-story";
+      item.className =
+        "admin-story";
 
 
-    item.innerHTML = `
+      const date =
+        formatDate(
+          article.created_at
+        );
 
-      <div class="admin-story-top">
 
-        <div>
+      item.innerHTML = `
 
-          <h3>
-            ${escapeHTML(article.title)}
-          </h3>
+        <div class="admin-story-top">
 
-          <div class="admin-story-meta">
+          <div>
 
-            ${article.category.toUpperCase()}
-            ·
-            ${escapeHTML(article.author)}
-            ·
-            ${article.date}
+            <h3>
+              ${escapeHTML(
+                article.title
+              )}
+            </h3>
+
+            <div class="admin-story-meta">
+
+              ${escapeHTML(
+                String(
+                  article.category ||
+                  "technology"
+                ).toUpperCase()
+              )}
+
+              ·
+
+              ${escapeHTML(
+                article.author ||
+                "OINANCE Editorial"
+              )}
+
+              ·
+
+              ${escapeHTML(date)}
+
+            </div>
 
           </div>
 
+
+          <button
+            class="delete-button"
+            data-id="${article.id}"
+          >
+            DELETE
+          </button>
+
         </div>
 
-
-        <button
-          class="delete-button"
-          data-id="${article.id}"
-        >
-          DELETE
-        </button>
-
-      </div>
-
-    `;
+      `;
 
 
-    container.appendChild(item);
+      container.appendChild(item);
 
-  });
+    }
+  );
 
 
   attachDeleteButtons();
@@ -470,67 +836,98 @@ function renderAdminStories() {
 }
 
 
-/* =========================
-   DELETE
-========================= */
+/* =====================================================
+   DELETE ARTICLE
+===================================================== */
 
 function attachDeleteButtons() {
 
   document
-    .querySelectorAll(".delete-button")
-    .forEach(function(button) {
+    .querySelectorAll(
+      ".delete-button"
+    )
+    .forEach(
+      function(button) {
 
-      button.addEventListener(
-        "click",
-        function() {
+        button.addEventListener(
+          "click",
+          async function() {
 
-          const id =
-            Number(button.dataset.id);
-
-
-          const confirmed =
-            confirm(
-              "Delete this OINANCE News story?"
-            );
+            const id =
+              button.dataset.id;
 
 
-          if (!confirmed) {
-            return;
+            const confirmed =
+              confirm(
+                "Delete this OINANCE News story?"
+              );
+
+
+            if (!confirmed) {
+
+              return;
+
+            }
+
+
+            try {
+
+              const { error } =
+                await supabaseClient
+                  .from(NEWS_TABLE)
+                  .delete()
+                  .eq(
+                    "id",
+                    id
+                  );
+
+
+              if (error) {
+
+                throw error;
+
+              }
+
+
+              await loadArticles();
+
+
+            } catch (error) {
+
+              showMessage(
+                "Delete failed: "
+                + error.message
+              );
+
+            }
+
           }
+        );
 
-
-          articles =
-            articles.filter(function(article) {
-
-              return article.id !== id;
-
-            });
-
-
-          saveArticles();
-
-          renderEverything();
-
-        }
-      );
-
-    });
+      }
+    );
 
 }
 
 
-/* =========================
+/* =====================================================
    RECENT STORIES
-========================= */
+===================================================== */
 
-function renderRecentStories() {
+function renderRecentStories(
+  articles
+) {
 
   const container =
-    document.getElementById("recentStories");
+    document.getElementById(
+      "recentStories"
+    );
 
 
   if (!container) {
+
     return;
+
   }
 
 
@@ -562,57 +959,69 @@ function renderRecentStories() {
 
   articles
     .slice(0, 5)
-    .forEach(function(article) {
+    .forEach(
+      function(article) {
 
-      const item =
-        document.createElement("div");
-
-
-      item.className =
-        "recent-story";
-
-
-      item.innerHTML = `
-
-        <div>
-
-          <h3>
-            ${escapeHTML(article.title)}
-          </h3>
-
-          <p>
-            ${article.category.toUpperCase()}
-            ·
-            ${article.date}
-          </p>
-
-        </div>
-
-        <span class="setting-value">
-          PUBLISHED
-        </span>
-
-      `;
+        const item =
+          document.createElement(
+            "div"
+          );
 
 
-      container.appendChild(item);
+        item.className =
+          "recent-story";
 
-    });
+
+        item.innerHTML = `
+
+          <div>
+
+            <h3>
+              ${escapeHTML(
+                article.title
+              )}
+            </h3>
+
+            <p>
+
+              ${escapeHTML(
+                String(
+                  article.category ||
+                  "technology"
+                ).toUpperCase()
+              )}
+
+              ·
+
+              ${escapeHTML(
+                formatDate(
+                  article.created_at
+                )
+              )}
+
+            </p>
+
+          </div>
+
+
+          <span class="setting-value">
+            PUBLISHED
+          </span>
+
+        `;
+
+
+        container.appendChild(item);
+
+      }
+    );
 
 }
 
 
-/* =========================
+/* =====================================================
    MEDIA BUTTONS
-========================= */
-
-const imageMediaButton =
-  document.getElementById("imageMediaButton");
-
-
-const videoMediaButton =
-  document.getElementById("videoMediaButton");
-
+===================================================== */
 
 if (imageMediaButton) {
 
@@ -624,9 +1033,18 @@ if (imageMediaButton) {
 
       openEditor();
 
-      document
-        .getElementById("adminImage")
-        .focus();
+
+      const imageInput =
+        document.getElementById(
+          "adminImage"
+        );
+
+
+      if (imageInput) {
+
+        imageInput.click();
+
+      }
 
     }
   );
@@ -644,9 +1062,18 @@ if (videoMediaButton) {
 
       openEditor();
 
-      document
-        .getElementById("adminVideo")
-        .focus();
+
+      const videoInput =
+        document.getElementById(
+          "adminVideo"
+        );
+
+
+      if (videoInput) {
+
+        videoInput.click();
+
+      }
 
     }
   );
@@ -654,40 +1081,113 @@ if (videoMediaButton) {
 }
 
 
-/* =========================
-   HTML ESCAPE
-========================= */
+/* =====================================================
+   MESSAGE
+===================================================== */
 
-function escapeHTML(value) {
+function showMessage(
+  message
+) {
+
+  const element =
+    document.getElementById(
+      "adminMessage"
+    );
+
+
+  if (!element) {
+
+    return;
+
+  }
+
+
+  element.textContent =
+    message;
+
+
+  if (
+    !message.startsWith(
+      "Error:"
+    )
+  ) {
+
+    setTimeout(
+      function() {
+
+        element.textContent = "";
+
+      },
+      5000
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   DATE FORMAT
+===================================================== */
+
+function formatDate(
+  value
+) {
+
+  if (!value) {
+
+    return "";
+
+  }
+
+
+  const date =
+    new Date(value);
+
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+
+    return "";
+
+  }
+
+
+  return date.toLocaleDateString();
+
+}
+
+
+/* =====================================================
+   HTML ESCAPE
+===================================================== */
+
+function escapeHTML(
+  value
+) {
 
   const div =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
+
 
   div.textContent =
-    value;
+    value == null
+      ? ""
+      : value;
+
 
   return div.innerHTML;
 
 }
 
 
-/* =========================
-   EVERYTHING
-========================= */
-
-function renderEverything() {
-
-  updateStatistics();
-
-  renderAdminStories();
-
-  renderRecentStories();
-
-}
-
-
-/* =========================
+/* =====================================================
    START
-========================= */
+===================================================== */
 
-renderEverything();
+loadArticles();
