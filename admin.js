@@ -8,9 +8,9 @@
    SUPABASE CONNECTION
 ===================================================== */
 
-const SUPABASE_URL = https://ieqgrgklofmesatrycwq.supabase.co;
+const SUPABASE_URL = "https://ieqgrgklofmesatrycwq.supabase.co";
 
-const SUPABASE_PUBLISHABLE_KEY = sb_publishable_vGQOCmoq7a8FgIHY6yIofg_uIl4P4yJ;
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_vGQOCmoq7a8FgIHY6yIofg_uIl4P4yJ";
 
 
 const supabaseClient =
